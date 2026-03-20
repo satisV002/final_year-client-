@@ -14,6 +14,8 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid
 } from 'recharts';
+import FilterBar, { Filters } from '@/components/filters/FilterBar';
+import { useLocation } from '@/context/LocationContext';
 
 interface OverviewStats {
     total: number;
@@ -31,14 +33,23 @@ const QUICK_LINKS = [
 
 export default function OverviewPage() {
     const { user } = useAuth();
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [stats, setStats] = useState<OverviewStats | null>(null);
     const [chartData, setChartData] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
 
-    const load = useCallback(async () => {
+    const load = useCallback(async (f: Filters) => {
         setError(null);
         try {
-            const res = await api.get('/mock/groundwater', { params: { state: 'Telangana', limit: '100', sort: 'date:1' } });
+            const params: any = { 
+                state: f.state || 'All India', 
+                limit: '100', 
+                sort: 'date:1' 
+            };
+            if (f.district) params.district = f.district;
+
+            const res = await api.get('/mock/groundwater', { params });
             const rawData = res.data.data ?? [];
 
             const data: StationRecord[] = rawData.map((s: any) => ({
@@ -76,10 +87,12 @@ export default function OverviewPage() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => { load(filters); }, [load, filters]);
 
     return (
         <div className="space-y-6">
+            <FilterBar value={filters} onChange={setFilters} />
+
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
                     <AlertTriangle className="w-5 h-5 flex-shrink-0" />
@@ -148,7 +161,7 @@ export default function OverviewPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 bg-slate-900 border border-white/5 rounded-2xl p-5">
                     <h2 className="font-semibold text-white mb-1">Average Water Level Trend</h2>
-                    <p className="text-xs text-slate-500 mb-4">Last 30 days — Telangana (MBGL)</p>
+                    <p className="text-xs text-slate-500 mb-4">Last 30 days — {filters.state || 'All India'} (MBGL)</p>
                     {chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={220}>
                             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>

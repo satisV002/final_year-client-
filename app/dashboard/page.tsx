@@ -11,9 +11,8 @@ import {
     ResponsiveContainer, Area, AreaChart, Legend, BarChart, Bar, ComposedChart
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
-
-import { INDIA_STATES } from '@/lib/constants';
 import { StationRecord } from '@/types/station';
+import { useLocation } from '@/context/LocationContext';
 
 interface SummaryStats {
     total: number;
@@ -62,7 +61,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function DashboardPage() {
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [records, setRecords] = useState<StationRecord[]>([]);
     const [stats, setStats] = useState<SummaryStats | null>(null);
     const [loading, setLoading] = useState(false);
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                 </button>
             </div>
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+            <FilterBar value={filters} onChange={(f) => setFilters(f)} onSyncComplete={() => fetchData(filters)} />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">

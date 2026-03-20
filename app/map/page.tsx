@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import SearchAnimation from '@/components/ui/SearchAnimation';
 import { RefreshCw } from 'lucide-react';
+import { useLocation } from '@/context/LocationContext';
 
 // Also extending the Station record since mock data has waterLevelMbgl at the root level
 interface StationRecord extends Station {
@@ -38,14 +39,10 @@ const LeafletMap = dynamic<MapProps>(
     }
 );
 
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-];
-
 export default function MapPage() {
     const router = useRouter();
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [allStations, setAllStations] = useState<StationRecord[]>([]);
     const [filteredStations, setFilteredStations] = useState<StationRecord[]>([]);
     const [selected, setSelected] = useState<Station | null>(null);
@@ -64,9 +61,20 @@ export default function MapPage() {
             try {
                 // We use mock endpoint exclusively here to guarantee data visualization based on user request "make every page working with real visualizations using existing JSON"
                 const res = await api.get('/mock/groundwater', { params: { limit: '500' } });
-                const rawData = res.data.data ?? [];
+                const raw = res.data.data ?? [];
 
-                stationsData = rawData.map((s: any) => ({
+                // Unique by stationId - take latest date
+                const latestMap = new Map<string, any>();
+                raw.forEach((s: any) => {
+                    const id = s.location?.stationId;
+                    if (!id) return;
+                    const existing = latestMap.get(id);
+                    if (!existing || new Date(s.date) > new Date(existing.date)) {
+                        latestMap.set(id, s);
+                    }
+                });
+
+                stationsData = Array.from(latestMap.values()).map((s: any) => ({
                     ...s,
                     stationId: s.location?.stationId || '',
                     stationName: s.location?.stationName || s.location?.village || s.location?.stationId || 'Unknown Station',
@@ -75,7 +83,9 @@ export default function MapPage() {
                     villageName: s.location?.village || '',
                     lat: s.location?.coordinates?.coordinates?.[1] || 0,
                     lng: s.location?.coordinates?.coordinates?.[0] || 0,
-                    agencyName: s.source || 'Unknown'
+                    agencyName: s.source || 'Unknown',
+                    waterLevelMbgl: s.waterLevelMbgl || 0,
+                    trend: s.trend || 'Stable'
                 }));
             } catch (fallbackErr) {
                 throw fallbackErr;
@@ -107,7 +117,7 @@ export default function MapPage() {
     // 2. Client-side filtering when filters or allStations change
     useEffect(() => {
         let filtered = allStations;
-        if (filters.state) {
+        if (filters.state && filters.state !== 'All India') {
             filtered = filtered.filter(s => s.stateName.toLowerCase() === filters.state?.toLowerCase());
         }
         if (filters.district) {
@@ -178,7 +188,7 @@ export default function MapPage() {
                 </div>
             </div>
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={setFilters} />
+            <FilterBar value={filters} onChange={setFilters} onSyncComplete={fetchAll} />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">

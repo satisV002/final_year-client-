@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { LocationProvider } from '@/context/LocationContext';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${geist.variable} font-sans antialiased bg-slate-950 text-slate-100`} suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          <LocationProvider>
+            {children}
+          </LocationProvider>
         </AuthProvider>
       </body>
     </html>

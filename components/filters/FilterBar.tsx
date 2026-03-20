@@ -1,7 +1,8 @@
-'use client';
-
-import { useState } from 'react';
-import { Filter, CalendarRange, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Filter, CalendarRange, X, RefreshCw, Loader2, Activity, AlertTriangle } from 'lucide-react';
+import { useLocation } from '@/context/LocationContext';
+import { INDIA_STATES } from '@/lib/constants';
+import api, { getApiErrorMessage } from '@/lib/axios';
 
 export interface Filters {
     state?: string;
@@ -12,36 +13,73 @@ export interface Filters {
 }
 
 interface FilterBarProps {
-    states: string[];
     value: Filters;
     onChange: (f: Filters) => void;
+    onSyncComplete?: () => void;
+    hideGlobalState?: boolean;
 }
 
-export default function FilterBar({ states, value, onChange }: FilterBarProps) {
+export default function FilterBar({ value, onChange, onSyncComplete, hideGlobalState = false }: FilterBarProps) {
+    const { location, setLocation } = useLocation();
     const [expanded, setExpanded] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
-    const update = (key: keyof Filters, val: string) =>
-        onChange({ ...value, [key]: val || undefined });
+    // Sync context with local state changes if state changes in FilterBar
+    const update = (key: keyof Filters, val: string) => {
+        const newVal = val || undefined;
+        onChange({ ...value, [key]: newVal });
+        
+        // If state changed, update global context too
+        if (key === 'state') {
+            setLocation({ state: val || 'All India', district: undefined });
+        }
+        // If district changed, update global context too
+        if (key === 'district') {
+            setLocation({ ...location, district: newVal });
+        }
+    };
+
+    const handleSync = async () => {
+        if (!value.state || value.state === 'All India' || !value.district) return;
+        
+        setSyncing(true);
+        setSyncStatus(null);
+        try {
+            await api.post('/sync', {
+                state: value.state,
+                district: value.district
+            });
+            setSyncStatus({ type: 'success', msg: `Sync started for ${value.district}.` });
+            if (onSyncComplete) onSyncComplete();
+            setTimeout(() => setSyncStatus(null), 5000);
+        } catch (err) {
+            setSyncStatus({ type: 'error', msg: 'Sync failed: ' + getApiErrorMessage(err) });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const clear = () => onChange({ state: value.state });
 
     const active = !!(value.district || value.stationId || value.fromDate || value.toDate);
 
     return (
-        <div className="bg-slate-900 border border-white/5 rounded-2xl p-4">
+        <div className="bg-slate-900 border border-white/5 rounded-2xl p-4 shadow-xl">
             <div className="flex flex-wrap items-center gap-3">
                 {/* State */}
-                <div className="flex items-center gap-2">
-                    <label className="text-xs text-slate-500 whitespace-nowrap">State</label>
-                    <select
-                        value={value.state ?? ''}
-                        onChange={e => update('state', e.target.value)}
-                        className="bg-slate-800 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40"
-                    >
-                        <option value="">All States</option>
-                        {states.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                </div>
+                {!hideGlobalState && (
+                    <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500 whitespace-nowrap">State</label>
+                        <select
+                            value={value.state ?? location.state}
+                            onChange={e => update('state', e.target.value)}
+                            className="bg-slate-800 border border-white/10 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40"
+                        >
+                            {INDIA_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                )}
 
                 {/* Toggle more filters */}
                 <button
@@ -59,6 +97,28 @@ export default function FilterBar({ states, value, onChange }: FilterBarProps) {
                         <X className="w-3 h-3" /> Clear
                     </button>
                 )}
+
+                <div className="ml-auto flex items-center gap-3">
+                    {syncStatus && (
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs animate-in fade-in slide-in-from-right-4 ${
+                            syncStatus.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+                        }`}>
+                            {syncStatus.type === 'success' ? <Activity className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                            {syncStatus.msg}
+                        </div>
+                    )}
+                    
+                    {value.state && value.state !== 'All India' && value.district && (
+                        <button
+                            onClick={handleSync}
+                            disabled={syncing}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-xl text-sm text-emerald-400 transition-all disabled:opacity-50"
+                        >
+                            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                            <span className="hidden sm:inline">Sync Live</span>
+                        </button>
+                    )}
+                </div>
             </div>
 
             {expanded && (

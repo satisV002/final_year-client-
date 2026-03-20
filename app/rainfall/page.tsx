@@ -9,11 +9,7 @@ import {
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import api, { getApiErrorMessage } from '@/lib/axios';
-
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-];
+import { useLocation } from '@/context/LocationContext';
 
 interface ChartPoint {
     date: string;
@@ -36,7 +32,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function RainfallPage() {
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [chartData, setChartData] = useState<ChartPoint[]>([]);
     const [scatterData, setScatterData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -130,7 +127,7 @@ export default function RainfallPage() {
             </div>
 
             {/* Filters */}
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+            <FilterBar value={filters} onChange={setFilters} onSyncComplete={() => loadData(filters)} />
 
             {/* Error */}
             {error && (

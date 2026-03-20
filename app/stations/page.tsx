@@ -12,8 +12,8 @@ import {
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import SearchAnimation from '@/components/ui/SearchAnimation';
+import { useLocation } from '@/context/LocationContext';
 
-import { INDIA_STATES } from '@/lib/constants';
 import { Station } from '@/types/station';
 
 interface StationRecord extends Station {
@@ -52,8 +52,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 function StationsContent() {
     const searchParams = useSearchParams();
     const stationIdParam = searchParams.get('id');
+    const { location } = useLocation();
 
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [stations, setStations] = useState<StationRecord[]>([]);
 
     // Total Unique Stations from API (we fetch 500 records then unique them for charting)
@@ -187,7 +188,7 @@ function StationsContent() {
                 </button>
             </div>
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+            <FilterBar value={filters} onChange={(f) => setFilters(f)} onSyncComplete={() => fetchStations(filters, page, search)} />
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-emerald-500/20 rounded-2xl p-4 group">

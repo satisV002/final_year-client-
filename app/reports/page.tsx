@@ -12,11 +12,7 @@ import {
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import { StationRecord } from '@/types/station';
-
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-];
+import { useLocation } from '@/context/LocationContext';
 
 const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
@@ -144,7 +140,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function ReportsPage() {
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [report, setReport] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -200,7 +197,7 @@ export default function ReportsPage() {
                 </button>
             </div>
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+            <FilterBar value={filters} onChange={(f) => setFilters(f)} onSyncComplete={() => generate(filters)} />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">

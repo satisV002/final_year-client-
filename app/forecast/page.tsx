@@ -9,12 +9,7 @@ import {
 import api from '@/lib/axios';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import { StationRecord } from '@/types/station';
-
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-    'Bihar', 'West Bengal', 'Punjab', 'Haryana', 'Kerala', 'Assam',
-];
+import { useLocation } from '@/context/LocationContext';
 
 interface DataPoint {
     date: string;
@@ -109,7 +104,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function ForecastPage() {
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [chartData, setChartData] = useState<DataPoint[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -166,7 +162,7 @@ export default function ForecastPage() {
                 </button>
             </div>
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+            <FilterBar value={filters} onChange={setFilters} onSyncComplete={() => runForecast(filters)} />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">

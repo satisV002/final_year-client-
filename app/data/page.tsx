@@ -11,7 +11,7 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 
-import { INDIA_STATES } from '@/lib/constants';
+import { useLocation } from '@/context/LocationContext';
 import { StationRecord } from '@/types/station';
 
 interface Pagination { page: number; limit: number; totalPages: number; totalRecords: number; }
@@ -70,7 +70,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function DataPage() {
-    const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const { location } = useLocation();
+    const [filters, setFilters] = useState<Filters>({ state: location.state, district: location.district });
     const [records, setRecords] = useState<StationRecord[]>([]);
     const [chartData, setChartData] = useState<any[]>([]); // New mini-chart showing records per month
     const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -181,7 +182,7 @@ export default function DataPage() {
                 </div>
             )}
 
-            <FilterBar states={INDIA_STATES} value={filters} onChange={setFilters} />
+            <FilterBar value={filters} onChange={setFilters} onSyncComplete={() => fetchData(filters, page, sort)} />
 
             {error && (
                 <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
