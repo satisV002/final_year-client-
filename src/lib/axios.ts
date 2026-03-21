@@ -1,10 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-// NOTE: backend runs on port 7000 (configured via .env) in development.
+// NOTE: backend runs on port 7001 (configured via .env) in development.
 // You can override this with NEXT_PUBLIC_API_URL (e.g. for Docker or alternate host).
 const api = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1',
+    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7001/api/v1',
     timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
 });
@@ -43,14 +43,16 @@ api.interceptors.response.use(
         } else if (status === 404) {
             console.error('Resource not found');
         } else if (status === 500) {
-            console.error('Server error — please try again later');
+            console.error('Internal Server Error — Please check backend logs');
+        } else if (status === 503) {
+            console.error('Service Unavailable — Remote API (WRIS) may be timing out');
         } else if (!error.response) {
-            // config may be undefined if request was never built
-            console.error('Network error — server may be down', {
-                url: error.config?.url ?? '<none>',
-                baseURL: error.config?.baseURL ?? '<none>',
+            console.error('Network error — check your internet connection or backend status', {
+                url: error.config?.url,
+                method: error.config?.method?.toUpperCase()
             });
         }
+
 
         return Promise.reject(error);
     }
@@ -66,10 +68,10 @@ export type ApiError = {
 
 export function getApiErrorMessage(error: unknown): string {
     if (axios.isAxiosError(error)) {
-        return (error.response?.data as any)?.error ||
-            (error.response?.data as any)?.message ||
-            error.message ||
-            'An unexpected error occurred';
+        const data = error.response?.data as any;
+        return data?.error || data?.message || data?.details || error.message || 'An unexpected error occurred';
     }
+    if (error instanceof Error) return error.message;
     return 'An unexpected error occurred';
 }
+
