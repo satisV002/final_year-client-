@@ -79,7 +79,7 @@ export default function StationTable({ stations }: Props) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/[0.02]">
-                            {paginated.map((s, i) => (
+                            {paginated.length > 0 ? paginated.map((s, i) => (
                                 <tr key={i} className="hover:bg-white/[0.01] transition-colors group">
                                     <td className="px-6 py-4 font-medium text-slate-200 group-hover:text-emerald-400 transition-colors">{s.stationName}</td>
                                     <td className="px-6 py-4 text-slate-400">{s.state}</td>
@@ -95,8 +95,15 @@ export default function StationTable({ stations }: Props) {
                                     <td className="px-6 py-4 text-slate-500 font-mono text-xs">{s.rainfall.toFixed(1)}</td>
                                     <td className="px-6 py-4 text-slate-500 text-xs">{new Date(s.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                                 </tr>
-                            ))}
+                            )) : (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">
+                                        No stations match your search or filters.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
+
                     </table>
                 </div>
 

@@ -94,7 +94,8 @@ export default function MapPage() {
             // Deduplicate to show only the latest record per station on the map
             const latestMap = new Map<string, StationRecord>();
             stationsData.forEach(r => {
-                if (!r.lat || !r.lng) return; // Must have coordinates
+                if (typeof r.lat !== 'number' || typeof r.lng !== 'number' || isNaN(r.lat) || isNaN(r.lng)) return;
+
                 const existing = latestMap.get(r.stationId);
                 if (!existing || new Date(r.date) > new Date(existing.date)) {
                     latestMap.set(r.stationId, r);

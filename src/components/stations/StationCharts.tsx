@@ -59,8 +59,23 @@ export default function StationCharts({ data }: Props) {
         );
     };
 
+    if (data.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20 bg-slate-900/50 border border-white/5 rounded-3xl">
+                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                    <BarChart className="w-8 h-8 text-slate-600" />
+                </div>
+                <h3 className="text-lg font-bold text-white">No Analytics Data Available</h3>
+                <p className="text-slate-500 text-sm max-w-xs text-center mt-2">
+                    Try adjusting your filters or syncing new data for this region to see trends and distribution.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+
             {/* 1. Top 10 Districts Bar */}
             <div className="bg-slate-900 border border-white/5 rounded-2xl p-5 xl:col-span-2">
                 <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-6 flex items-center gap-2">

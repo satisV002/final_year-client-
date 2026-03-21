@@ -88,7 +88,8 @@ export default function GroundwaterMap({ stations, onSelect, selectedId }: Props
         const markers: L.Marker[] = [];
         stations.forEach(station => {
             const { lat, lng, stationId, stationName, waterLevelMbgl } = station;
-            if (!lat || !lng) return;
+            if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+
 
             const selected = station.stationId === selectedId;
             const color = getMarkerColor(waterLevelMbgl || 0);
