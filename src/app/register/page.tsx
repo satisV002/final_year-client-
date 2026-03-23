@@ -79,7 +79,7 @@ export default function RegisterPage() {
         try {
             await register(fullname.trim(), email, password);
             setIsSuccess(true);
-            setTimeout(() => router.push('/about'), 1200);
+            setTimeout(() => router.push('/overview'), 1200);
         } catch { /* error shown via context */ }
     };
 

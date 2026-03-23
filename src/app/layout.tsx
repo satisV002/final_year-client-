@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { LocationProvider } from '@/context/LocationContext';
+import Navbar from '@/components/layout/Navbar';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
 
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geist.variable} font-sans antialiased bg-slate-950 text-slate-100`} suppressHydrationWarning>
         <AuthProvider>
           <LocationProvider>
-            {children}
+            <Navbar />
+            <main>
+              {children}
+            </main>
           </LocationProvider>
         </AuthProvider>
       </body>

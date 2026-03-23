@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/register', '/home', '/about'];
+const PUBLIC_ROUTES = ['/login', '/register', '/about'];
+// The root '/' is also considered public but handled separately below
 const PROTECTED_PREFIXES = ['/dashboard', '/map', '/data', '/overview', '/forecast', '/stations', '/reports', '/rainfall'];
 
 export default function middleware(req: NextRequest) {
@@ -18,10 +19,11 @@ export default function middleware(req: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // 2. If already logged in and try to access login/register -> Home
-    if (isPublic && token && pathname !== '/' && pathname !== '/home' && pathname !== '/about') {
+    // 2. If already logged in and try to access login/register/root -> Overview
+    // We allow them to view '/about' even if logged in
+    if (token && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
         const url = req.nextUrl.clone();
-        url.pathname = '/home'; // Changed from /overview to /home as per user request
+        url.pathname = '/overview'; 
         return NextResponse.redirect(url);
     }
 
