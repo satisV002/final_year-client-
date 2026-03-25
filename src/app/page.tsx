@@ -53,6 +53,20 @@ function GroundwaterCanvas() {
             strata.push(mesh);
         }
 
+        /* ─── Circular Particle Texture Helper ─── */
+        const createCircleTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d')!;
+            ctx.beginPath();
+            ctx.arc(32, 32, 30, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        };
+        const circleTexture = createCircleTexture();
+
         /* ── Water particle aquifer ── */
         const PARTICLE_COUNT = 2200;
         const positions = new Float32Array(PARTICLE_COUNT * 3);
@@ -91,6 +105,7 @@ function GroundwaterCanvas() {
             transparent: true,
             opacity: 0.75,
             sizeAttenuation: true,
+            map: circleTexture, // Added circular texture
             blending: THREE.AdditiveBlending,
             depthWrite: false,
         });
@@ -112,10 +127,12 @@ function GroundwaterCanvas() {
         bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
         const bMat = new THREE.PointsMaterial({
             size: 1.2, color: 0x67e8f9, transparent: true, opacity: 0.55,
+            map: circleTexture, // Added circular texture
             sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false,
         });
         const bubbles = new THREE.Points(bGeo, bMat);
         scene.add(bubbles);
+
 
         /* ── Underground scan beam ── */
         const beamGeo = new THREE.PlaneGeometry(100, 0.3);
@@ -216,6 +233,115 @@ function GroundwaterCanvas() {
     return <div ref={mountRef} className="absolute inset-0 w-full h-full" />;
 }
 
+/* ─── Water Drops Background ─────────────────────────────────────── */
+function ParticleField() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let W = window.innerWidth, H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
+
+        interface Drop {
+            x: number; y: number; vy: number; radius: number;
+            opacity: number; splashing: boolean; splashRadius: number; splashOpacity: number;
+        }
+
+        const drops: Drop[] = Array.from({ length: 80 }, () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vy: 0.6 + Math.random() * 1.2,
+            radius: 2 + Math.random() * 4,
+            opacity: 0.15 + Math.random() * 0.45,
+            splashing: false,
+            splashRadius: 0,
+            splashOpacity: 0,
+        }));
+
+        const drawDrop = (x: number, y: number, r: number, alpha: number) => {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            // Teardrop: circle body + pointed top
+            ctx.arc(x, y + r * 0.3, r, 0, Math.PI * 2);
+            ctx.moveTo(x - r * 0.6, y + r * 0.3);
+            ctx.quadraticCurveTo(x, y - r * 1.6, x + r * 0.6, y + r * 0.3);
+            const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.2, 0, x, y, r * 1.4);
+            grad.addColorStop(0, 'rgba(103,232,249,0.9)');
+            grad.addColorStop(0.5, 'rgba(8,145,178,0.6)');
+            grad.addColorStop(1, 'rgba(6,182,212,0)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.restore();
+        };
+
+        const drawSplash = (x: number, sr: number, so: number) => {
+            ctx.save();
+            ctx.globalAlpha = so;
+            ctx.beginPath();
+            ctx.arc(x, H - 2, sr, Math.PI, 0);
+            ctx.strokeStyle = 'rgba(34,211,238,0.6)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // tiny splash droplets
+            for (let k = 0; k < 4; k++) {
+                const angle = (Math.PI / 5) * k + Math.PI / 10;
+                const sx = x + Math.cos(angle) * sr * 0.8;
+                const sy = H - 2 - Math.sin(angle) * sr * 0.6;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(103,232,249,0.7)';
+                ctx.fill();
+            }
+            ctx.restore();
+        };
+
+        let frame: number;
+        const animate = () => {
+            frame = requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, W, H);
+
+            drops.forEach(d => {
+                if (d.splashing) {
+                    drawSplash(d.x, d.splashRadius, d.splashOpacity);
+                    d.splashRadius += 1.8;
+                    d.splashOpacity -= 0.03;
+                    if (d.splashOpacity <= 0) {
+                        // reset drop
+                        d.y = -20;
+                        d.x = Math.random() * W;
+                        d.vy = 0.6 + Math.random() * 1.2;
+                        d.splashing = false;
+                        d.splashRadius = 0;
+                        d.splashOpacity = 0;
+                    }
+                } else {
+                    drawDrop(d.x, d.y, d.radius, d.opacity);
+                    d.y += d.vy;
+                    if (d.y > H + 10) {
+                        d.splashing = true;
+                        d.splashRadius = d.radius;
+                        d.splashOpacity = d.opacity * 1.5;
+                    }
+                }
+            });
+        };
+        animate();
+
+        const onResize = () => {
+            W = window.innerWidth; H = window.innerHeight;
+            canvas.width = W; canvas.height = H;
+        };
+        window.addEventListener('resize', onResize);
+        return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize); };
+    }, []);
+    return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
+}
+
 /* ─────────────────────────────────────────
    WATER RIPPLE (CSS only)
 ───────────────────────────────────────── */
@@ -278,11 +404,13 @@ export default function HomePage() {
 
             {/* ═══════════ HERO ═══════════ */}
             <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+                <ParticleField />
 
                 {/* Three.js canvas fills hero */}
                 <div className="absolute inset-0">
                     <GroundwaterCanvas />
                 </div>
+
 
                 {/* Dark overlay gradient so text is readable */}
                 <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/30 to-slate-950/90 pointer-events-none" />

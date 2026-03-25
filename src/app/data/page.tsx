@@ -13,6 +13,8 @@ import {
 
 import { useLocation } from '@/context/LocationContext';
 import { StationRecord } from '@/types/station';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 interface Pagination { page: number; limit: number; totalPages: number; totalRecords: number; }
 
@@ -80,15 +82,18 @@ export default function DataPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const debouncedFilters = useDebounce(filters, 500);
+
     const fetchData = useCallback(async (f: Filters, p: number, s: string) => {
         setLoading(true);
         setError(null);
         try {
             // Fetch list data
             const params: Record<string, string> = { page: String(p), limit: '25', sort: s };
-            if (f.state) params.state = f.state;
-            if (f.district) params.district = f.district;
-            if (f.stationId) params.stationName = f.stationId;
+            if (f.state) params.state = f.state.trim();
+            if (f.district) params.district = f.district.trim();
+            if (f.stationId) params.stationName = f.stationId.trim();
+
 
             // Hook into Mock API for guaranteed test data
             const res = await api.get('/mock/groundwater', { params });
@@ -132,8 +137,9 @@ export default function DataPage() {
         }
     }, []);
 
-    useEffect(() => { setPage(1); }, [filters]);
-    useEffect(() => { fetchData(filters, page, sort); }, [fetchData, filters, page, sort]);
+    useEffect(() => { setPage(1); }, [debouncedFilters]);
+    useEffect(() => { fetchData(debouncedFilters, page, sort); }, [fetchData, debouncedFilters, page, sort]);
+
 
     const toggleSort = (key: string) => {
         const dir = sort === `${key}:1` ? '-1' : '1';

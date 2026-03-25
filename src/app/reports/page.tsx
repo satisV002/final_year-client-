@@ -13,6 +13,8 @@ import {
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import { StationRecord } from '@/types/station';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 
@@ -146,13 +148,17 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const debouncedFilters = useDebounce(filters, 500);
+
+
     const generate = useCallback(async (f: Filters) => {
         setLoading(true);
         setError(null);
         try {
             const params: Record<string, string> = { limit: '500', sort: 'date:-1' };
-            if (f.state) params.state = f.state;
-            if (f.district) params.district = f.district;
+            if (f.state) params.state = f.state.trim();
+            if (f.district) params.district = f.district.trim();
+
 
             // Using guaranteed mock data for complete analytics
             const res = await api.get('/mock/groundwater', { params });
@@ -175,7 +181,8 @@ export default function ReportsPage() {
         }
     }, []);
 
-    useEffect(() => { generate(filters); }, [generate, filters]);
+    useEffect(() => { generate(debouncedFilters); }, [generate, debouncedFilters]);
+
 
     const { summary, byDistrict = [], statusBreakdown = [], declineTrend = [], rechargeData = [], seasonalData = [] } = report ?? {};
 

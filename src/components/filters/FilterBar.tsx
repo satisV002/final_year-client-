@@ -27,16 +27,25 @@ export default function FilterBar({ value, onChange, onSyncComplete, hideGlobalS
 
     // Sync context with local state changes if state changes in FilterBar
     const update = (key: keyof Filters, val: string) => {
-        const newVal = val || undefined;
+        // Trim text inputs to prevent matching issues with trailing spaces
+        const trimmedVal = (key === 'district' || key === 'stationId') ? val.trim() : val;
+        const newVal = val || undefined; // Keep original for input field but use for state
+        
+        // Pass the RAW value to onChange so the input field doesn't jump while typing
+        // but the actual filter logic in the parent will use the debounced/trimmed version.
+        // Wait, actually it's better to trim only when the user stops typing or for the final value.
+        // But for now, let's just make sure the state passed to parent is clean.
+        
         onChange({ ...value, [key]: newVal });
         
-        // If state changed, update global context too
+        // Use trimmed value for global location context
+        const contextVal = trimmedVal || undefined;
+
         if (key === 'state') {
             setLocation({ state: val || 'All India', district: undefined });
         }
-        // If district changed, update global context too
         if (key === 'district') {
-            setLocation({ ...location, district: newVal });
+            setLocation({ ...location, district: contextVal });
         }
     };
 

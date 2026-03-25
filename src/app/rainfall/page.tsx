@@ -10,6 +10,8 @@ import {
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import api, { getApiErrorMessage } from '@/lib/axios';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 interface ChartPoint {
     date: string;
@@ -40,13 +42,17 @@ export default function RainfallPage() {
     const [error, setError] = useState<string | null>(null);
     const [correlation, setCorrelation] = useState<number | null>(null);
 
+    const debouncedFilters = useDebounce(filters, 500);
+
+
     const loadData = useCallback(async (f: Filters) => {
         setLoading(true);
         setError(null);
         try {
             const params: Record<string, string> = { limit: '500', sort: 'date:1' };
-            if (f.state) params.state = f.state;
-            if (f.district) params.district = f.district;
+            if (f.state) params.state = f.state.trim();
+            if (f.district) params.district = f.district.trim();
+
 
             // Using mock API to guarantee 500+ records with integrated rainfall
             const res = await api.get('/mock/groundwater', { params });
@@ -105,7 +111,8 @@ export default function RainfallPage() {
         }
     }, []);
 
-    useEffect(() => { loadData(filters); }, [loadData, filters]);
+    useEffect(() => { loadData(debouncedFilters); }, [loadData, debouncedFilters]);
+
 
     const corrLabel = correlation != null
         ? (correlation < -0.5 ? 'Strong Negative (Rain reduces depth)' : correlation < -0.2 ? 'Moderate Negative' : correlation > 0.5 ? 'Strong Positive (Unusual)' : 'Weak / No Correlation')

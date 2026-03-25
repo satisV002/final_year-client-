@@ -10,6 +10,8 @@ import api from '@/lib/axios';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import { StationRecord } from '@/types/station';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 interface DataPoint {
     date: string;
@@ -111,13 +113,17 @@ export default function ForecastPage() {
     const [error, setError] = useState<string | null>(null);
     const [predicted2026, setPredicted2026] = useState<number | null>(null);
 
+    const debouncedFilters = useDebounce(filters, 500);
+
+
     const runForecast = useCallback(async (f: Filters) => {
         setLoading(true);
         setError(null);
         try {
             const params: Record<string, string> = { limit: '500', sort: 'date:1' };
-            if (f.state) params.state = f.state;
-            if (f.district) params.district = f.district;
+            if (f.state) params.state = f.state.trim();
+            if (f.district) params.district = f.district.trim();
+
             const res = await api.get('/mock/groundwater', { params });
             const rawData = res.data.data ?? [];
 

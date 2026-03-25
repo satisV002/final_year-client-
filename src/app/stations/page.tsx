@@ -6,6 +6,8 @@ import { RadioTower, Download, Loader2, AlertTriangle, RefreshCw } from 'lucide-
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import SearchAnimation from '@/components/ui/SearchAnimation';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 import { fetchAndNormalizeStations, NormalizedStation } from '@/services/station.service';
 import StationSummary from '@/components/stations/StationSummary';
@@ -27,12 +29,23 @@ function StationsContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const debouncedFilters = useDebounce(filters, 500);
+
+
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const data = await fetchAndNormalizeStations(filters);
+            // Trim whitespace for the actual service call
+            const cleanFilters = {
+                ...filters,
+                state: filters.state?.trim(),
+                district: filters.district?.trim(),
+                stationId: filters.stationId?.trim()
+            };
+            const data = await fetchAndNormalizeStations(cleanFilters);
             setStations(data);
+
         } catch (err) {
             setError(getApiErrorMessage(err));
         } finally {
@@ -41,8 +54,28 @@ function StationsContent() {
     }, [filters]);
 
     useEffect(() => {
-        loadData();
-    }, [loadData]);
+        // Use debounced filters for the automatic reload
+        const loadWithDebounce = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const cleanFilters = {
+                    ...debouncedFilters,
+                    state: debouncedFilters.state?.trim(),
+                    district: debouncedFilters.district?.trim(),
+                    stationId: debouncedFilters.stationId?.trim()
+                };
+                const data = await fetchAndNormalizeStations(cleanFilters);
+                setStations(data);
+            } catch (err) {
+                setError(getApiErrorMessage(err));
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadWithDebounce();
+    }, [debouncedFilters]);
+
 
     const avgLevel = stations.length ? stations.reduce((a: number, b: NormalizedStation) => a + b.groundwaterLevel, 0) / stations.length : 0;
     const criticalCount = stations.filter(s => s.groundwaterLevel > 10).length;

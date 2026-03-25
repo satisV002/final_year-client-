@@ -100,48 +100,113 @@ function WaterGlobe() {
     return <div ref={mountRef} className="w-full h-full" />;
 }
 
-/* ─── Floating Particle Field Background ─────────────────────────── */
+/* ─── Water Drops Background ─────────────────────────────────────── */
 function ParticleField() {
-    const mountRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     useEffect(() => {
-        if (!mountRef.current) return;
-        const W = window.innerWidth, H = window.innerHeight;
-        const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
-        renderer.setSize(W, H);
-        mountRef.current.appendChild(renderer.domElement);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200);
-        camera.position.z = 50;
+        let W = window.innerWidth, H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
 
-        const count = 800;
-        const pos = new Float32Array(count * 3);
-        for (let i = 0; i < count; i++) {
-            pos[i * 3] = (Math.random() - 0.5) * 120;
-            pos[i * 3 + 1] = (Math.random() - 0.5) * 120;
-            pos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+        interface Drop {
+            x: number; y: number; vy: number; radius: number;
+            opacity: number; splashing: boolean; splashRadius: number; splashOpacity: number;
         }
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-        const mat = new THREE.PointsMaterial({ color: 0x0891b2, size: 0.28, transparent: true, opacity: 0.35 });
-        const pts = new THREE.Points(geo, mat);
-        scene.add(pts);
+
+        const drops: Drop[] = Array.from({ length: 80 }, () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vy: 0.6 + Math.random() * 1.2,
+            radius: 2 + Math.random() * 4,
+            opacity: 0.15 + Math.random() * 0.45,
+            splashing: false,
+            splashRadius: 0,
+            splashOpacity: 0,
+        }));
+
+        const drawDrop = (x: number, y: number, r: number, alpha: number) => {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            ctx.beginPath();
+            // Teardrop: circle body + pointed top
+            ctx.arc(x, y + r * 0.3, r, 0, Math.PI * 2);
+            ctx.moveTo(x - r * 0.6, y + r * 0.3);
+            ctx.quadraticCurveTo(x, y - r * 1.6, x + r * 0.6, y + r * 0.3);
+            const grad = ctx.createRadialGradient(x - r * 0.3, y - r * 0.2, 0, x, y, r * 1.4);
+            grad.addColorStop(0, 'rgba(103,232,249,0.9)');
+            grad.addColorStop(0.5, 'rgba(8,145,178,0.6)');
+            grad.addColorStop(1, 'rgba(6,182,212,0)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.restore();
+        };
+
+        const drawSplash = (x: number, sr: number, so: number) => {
+            ctx.save();
+            ctx.globalAlpha = so;
+            ctx.beginPath();
+            ctx.arc(x, H - 2, sr, Math.PI, 0);
+            ctx.strokeStyle = 'rgba(34,211,238,0.6)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // tiny splash droplets
+            for (let k = 0; k < 4; k++) {
+                const angle = (Math.PI / 5) * k + Math.PI / 10;
+                const sx = x + Math.cos(angle) * sr * 0.8;
+                const sy = H - 2 - Math.sin(angle) * sr * 0.6;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(103,232,249,0.7)';
+                ctx.fill();
+            }
+            ctx.restore();
+        };
 
         let frame: number;
         const animate = () => {
             frame = requestAnimationFrame(animate);
-            pts.rotation.y += 0.0004;
-            pts.rotation.x += 0.0002;
-            renderer.render(scene, camera);
+            ctx.clearRect(0, 0, W, H);
+
+            drops.forEach(d => {
+                if (d.splashing) {
+                    drawSplash(d.x, d.splashRadius, d.splashOpacity);
+                    d.splashRadius += 1.8;
+                    d.splashOpacity -= 0.03;
+                    if (d.splashOpacity <= 0) {
+                        // reset drop
+                        d.y = -20;
+                        d.x = Math.random() * W;
+                        d.vy = 0.6 + Math.random() * 1.2;
+                        d.splashing = false;
+                        d.splashRadius = 0;
+                        d.splashOpacity = 0;
+                    }
+                } else {
+                    drawDrop(d.x, d.y, d.radius, d.opacity);
+                    d.y += d.vy;
+                    if (d.y > H + 10) {
+                        d.splashing = true;
+                        d.splashRadius = d.radius;
+                        d.splashOpacity = d.opacity * 1.5;
+                    }
+                }
+            });
         };
         animate();
-        return () => {
-            cancelAnimationFrame(frame);
-            renderer.dispose();
-            mountRef.current?.removeChild(renderer.domElement);
+
+        const onResize = () => {
+            W = window.innerWidth; H = window.innerHeight;
+            canvas.width = W; canvas.height = H;
         };
+        window.addEventListener('resize', onResize);
+        return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize); };
     }, []);
-    return <div ref={mountRef} className="fixed inset-0 pointer-events-none z-0" />;
+    return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
 }
 
 /* ─── 3D Tilt Card ──────────────────────────────────────────────── */

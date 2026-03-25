@@ -13,6 +13,7 @@ import {
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import { StationRecord } from '@/types/station';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface SummaryStats {
     total: number;
@@ -67,6 +68,9 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<SummaryStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // Debounce filters to prevent request storm while typing
+    const debouncedFilters = useDebounce(filters, 500);
 
     // Chart States
     const [chartData, setChartData] = useState<any[]>([]);
@@ -78,9 +82,9 @@ export default function DashboardPage() {
         setError(null);
         try {
             const params: Record<string, string> = {};
-            if (f.state) params.state = f.state;
-            if (f.district) params.district = f.district;
-            if (f.stationId) params.stationName = f.stationId;
+            if (f.state) params.state = f.state.trim();
+            if (f.district) params.district = f.district.trim();
+            if (f.stationId) params.stationName = f.stationId.trim();
             if (f.fromDate) params.fromDate = f.fromDate;
             if (f.toDate) params.toDate = f.toDate;
             params.limit = '300';
@@ -163,7 +167,7 @@ export default function DashboardPage() {
         }
     }, []);
 
-    useEffect(() => { fetchData(filters); }, [fetchData, filters]);
+    useEffect(() => { fetchData(debouncedFilters); }, [fetchData, debouncedFilters]);
 
     const trendIcon = (t: string) => t === 'Rising'
         ? <TrendingUp className="w-4 h-4 text-green-400" />

@@ -11,6 +11,8 @@ import { useRouter } from 'next/navigation';
 import SearchAnimation from '@/components/ui/SearchAnimation';
 import { RefreshCw } from 'lucide-react';
 import { useLocation } from '@/context/LocationContext';
+import { useDebounce } from '@/hooks/useDebounce';
+
 
 // Also extending the Station record since mock data has waterLevelMbgl at the root level
 interface StationRecord extends Station {
@@ -50,6 +52,8 @@ export default function MapPage() {
     const [loading, setLoading] = useState(false);
     const [analysisLoading, setAnalysisLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const debouncedFilters = useDebounce(filters, 500);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
@@ -118,14 +122,18 @@ export default function MapPage() {
     // 2. Client-side filtering when filters or allStations change
     useEffect(() => {
         let filtered = allStations;
-        if (filters.state && filters.state !== 'All India') {
-            filtered = filtered.filter(s => s.stateName.toLowerCase() === filters.state?.toLowerCase());
+        const sFilter = debouncedFilters.state?.trim();
+        const dFilter = debouncedFilters.district?.trim();
+
+        if (sFilter && sFilter !== 'All India') {
+            filtered = filtered.filter(s => s.stateName.toLowerCase() === sFilter.toLowerCase());
         }
-        if (filters.district) {
-            filtered = filtered.filter(s => s.districtName.toLowerCase() === filters.district?.toLowerCase());
+        if (dFilter) {
+            filtered = filtered.filter(s => s.districtName.toLowerCase() === dFilter.toLowerCase());
         }
         setFilteredStations(filtered);
-    }, [allStations, filters]);
+    }, [allStations, debouncedFilters]);
+
 
     // 3. Fetch Analysis (Mocked for immediate interaction based on selected station)
     useEffect(() => {
